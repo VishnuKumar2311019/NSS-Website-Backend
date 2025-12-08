@@ -14,7 +14,7 @@ try:
     client = MongoClient(MONGO_URI, serverSelectionTimeoutMS=5000)
     # Test the connection
     client.admin.command('ping')
-    db = client["nss_portal"]  #your DB name
+    db = client[DB_NAME]  #your DB name
     logger.info("Successfully connected to MongoDB")
 except Exception as e:
     logger.error(f"Failed to connect to MongoDB: {e}")
