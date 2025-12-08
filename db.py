@@ -1,6 +1,6 @@
 import os
 from pymongo import MongoClient
-from config import MONGO_URI
+#from config import MONGO_URI
 import logging
 
 # Configure logging
