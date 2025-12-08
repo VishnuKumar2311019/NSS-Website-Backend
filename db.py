@@ -22,7 +22,11 @@ except Exception as e:
     class MockDB:
         def __getattr__(self, name):
             return MockCollection()
-    
+        
+        def __getitem__(self, name):
+            # Handles db['collection_name'] <--- THIS WAS MISSING
+            return MockCollection()
+        
     class MockCollection:
         def find_one(self, *args, **kwargs):
             return None
