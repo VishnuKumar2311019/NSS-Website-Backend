@@ -1,3 +1,4 @@
+import os
 from pymongo import MongoClient
 from config import MONGO_URI
 import logging
@@ -5,6 +6,9 @@ import logging
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+MONGO_URI = os.getenv("MONGO_URI", MONGO_URI)
+DB_NAME = os.getenv("DB_NAME", "nss_portal")
 
 try:
     client = MongoClient(MONGO_URI, serverSelectionTimeoutMS=5000)

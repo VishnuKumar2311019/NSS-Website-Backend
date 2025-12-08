@@ -18,7 +18,10 @@ EMAIL_ADDRESS = os.environ.get("GMAIL_USER")  # Your Gmail address
 EMAIL_PASSWORD = os.environ.get("GMAIL_PASS")  # Your Gmail app password
 
 auth_bp = Blueprint('auth', __name__)
-users_col = db['users']
+if db:
+    users_col = db['users']
+else:
+    users_col = None  # Handle the case where db is not available
 @auth_bp.route('/check-user', methods=['GET'])
 def check_user():
     email = request.args.get('email')
