@@ -14,9 +14,9 @@ ALLOWED_IMAGE_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
 ALLOWED_DOCUMENT_EXTENSIONS = {'pdf', 'docx', 'doc'}
 
 # File size limits (in bytes)
-MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
-MAX_IMAGE_SIZE = 5 * 1024 * 1024   # 5MB for images
-MAX_DOCUMENT_SIZE = 10 * 1024 * 1024  # 10MB for documents
+MAX_FILE_SIZE = 50 * 1024 * 1024  # 50MB
+MAX_IMAGE_SIZE = 50 * 1024 * 1024   # 50MB for images
+MAX_DOCUMENT_SIZE = 50 * 1024 * 1024  # 50MB for documents
 
 # MIME type validation
 ALLOWED_IMAGE_MIME_TYPES = {
