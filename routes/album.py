@@ -17,15 +17,13 @@ def get_albums():
     for album in albums:
         album["_id"] = str(album["_id"])
         album["photos"] = album.get("photos", [])
-        # Ensure all photo URLs are complete
         for photo in album["photos"]:
-            if photo.get("url"):
-                # If URL doesn't start with http, prepend the base URL
-                if not photo["url"].startswith("http"):
-                    if photo["url"].startswith("/"):
-                        photo["url"] = f"http://localhost:5000{photo['url']}"
-                    else:
-                        photo["url"] = f"http://localhost:5000/uploads/{photo['url']}"
+            if photo.get("url") and not photo["url"].startswith("http"):
+                try:
+                    host = request.host_url.rstrip('/')
+                except Exception:
+                    host = "http://localhost:5000"
+                photo["url"] = f"{host}/uploads/{photo['filename']}"
 
     return jsonify(albums)
 
@@ -68,40 +66,46 @@ def delete_album(album_name):
     return jsonify({"message": "Album deleted successfully"})
 
 # ==============================
-# UPLOAD PHOTOS TO ALBUM
+# UPLOAD / ASSOCIATE PHOTOS
 # ==============================
 @albums_bp.route('/api/albums/<album_name>/photos', methods=['POST'])
 def upload_photos(album_name):
     album = albums_collection.find_one({"name": album_name})
     if not album:
         return jsonify({"error": "Album not found"}), 404
-    # Support two modes:
-    # 1) Admin uploads: request.files['photos'] (multipart/form-data)
-    # 2) Associate already-uploaded files: JSON body { photos: [{ filename, url, ... }, ...] }
 
     photo_list = []
 
+    # ------------------------------
     # JSON association mode
-    if request.is_json and request.json.get('photos'):
-        incoming = request.json.get('photos')
+    # ------------------------------
+    if request.is_json and request.json.get("photos"):
+        incoming = request.json.get("photos")
         if not isinstance(incoming, list):
             return jsonify({"error": "Invalid photos payload"}), 400
+
+        try:
+            host = request.host_url.rstrip('/')
+        except Exception:
+            host = "http://localhost:5000"
 
         for p in incoming:
             if not isinstance(p, dict):
                 continue
-            # minimal validation: must have filename
-            filename = p.get('filename')
-            url = p.get('url') or f"http://localhost:5000/uploads/{filename}"
+
+            filename = p.get("filename")
             if not filename:
                 continue
+
             photo_list.append({
                 "filename": filename,
-                "url": url
+                "url": p.get("url") or f"{host}/uploads/{filename}"
             })
 
+    # ------------------------------
+    # Multipart upload mode
+    # ------------------------------
     else:
-        # multipart upload mode (existing behavior)
         if 'photos' not in request.files:
             return jsonify({"error": "No photos uploaded"}), 400
 
@@ -112,18 +116,29 @@ def upload_photos(album_name):
                 continue
 
             filename = secure_filename(file.filename)
-            ext = filename.rsplit('.', 1)[-1].lower()
+            if not filename:
+                continue
 
-            if ext not in ['png', 'jpg', 'jpeg', 'gif', 'webp']:
+            ext = filename.rsplit('.', 1)[-1].lower()
+            if ext not in {'png', 'jpg', 'jpeg', 'gif', 'webp'}:
                 continue
 
             unique_filename = f"{uuid.uuid4()}_{filename}"
             file_path = os.path.join(UPLOAD_FOLDER, unique_filename)
+
+            if not os.path.abspath(file_path).startswith(os.path.abspath(UPLOAD_FOLDER)):
+                continue
+
             file.save(file_path)
+
+            try:
+                host = request.host_url.rstrip('/')
+            except Exception:
+                host = "http://localhost:5000"
 
             photo_list.append({
                 "filename": unique_filename,
-                "url": f"http://localhost:5000/uploads/{unique_filename}"
+                "url": f"{host}/uploads/{unique_filename}"
             })
 
     if not photo_list:

@@ -3,7 +3,8 @@ __pycache__/
 *.pyc
 
 # Environment
-.env
 
 # Uploads
 uploads/
+config.bat
+node_modules
