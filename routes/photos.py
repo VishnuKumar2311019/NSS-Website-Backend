@@ -2,6 +2,9 @@ from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt
 from werkzeug.utils import secure_filename
 import os
+from utils.cloudinary import cloudinary
+import cloudinary
+import cloudinary.uploader
 from config import UPLOAD_FOLDER
 from db import db
 import uuid
@@ -215,28 +218,40 @@ def upload_reports():
                 filename = secure_filename(file.filename)
                 if not filename:  # Additional security check
                     continue
-                    
-                unique_filename = f"report_{uuid.uuid4()}_{filename}"
-                file_path = os.path.join(UPLOAD_FOLDER, unique_filename)
+                
+                result = cloudinary.uploader.upload(
+                    file,
+                    folder="nss/activities/reports",
+                    resource_type="auto"
+                )
+                # unique_filename = f"report_{uuid.uuid4()}_{filename}"
+                # file_path = os.path.join(UPLOAD_FOLDER, unique_filename)
                 
                 # Ensure the file is saved within the upload directory
-                if not os.path.abspath(file_path).startswith(os.path.abspath(UPLOAD_FOLDER)):
-                    return jsonify({'error': 'Invalid file path'}), 400
+                # if not os.path.abspath(file_path).startswith(os.path.abspath(UPLOAD_FOLDER)):
+                #     return jsonify({'error': 'Invalid file path'}), 400
                 
                 # Save file
-                file.save(file_path)
+                # file.save(file_path)
                 
                 # Store report info
+                # report_data = {
+                #     'filename': unique_filename,
+                #     'original_name': filename,
+                #     'url': f'/uploads/{unique_filename}',
+                #     'uploaded_at': datetime.now().isoformat(),
+                #     'size': os.path.getsize(file_path),
+                #     'type': 'report',
+                #     'mime_type': file.content_type
+                # }
                 report_data = {
-                    'filename': unique_filename,
-                    'original_name': filename,
-                    'url': f'/uploads/{unique_filename}',
-                    'uploaded_at': datetime.now().isoformat(),
-                    'size': os.path.getsize(file_path),
-                    'type': 'report',
-                    'mime_type': file.content_type
+                    "url": result["secure_url"],          # ✅ permanent link
+                    "public_id": result["public_id"],     # needed for delete
+                    "original_name": file.filename,
+                    "uploaded_at": datetime.utcnow().isoformat(),
+                    "type": "report",
+                    "mime_type": file.content_type
                 }
-                
                 uploaded_files.append(report_data)
         
         if not uploaded_files:

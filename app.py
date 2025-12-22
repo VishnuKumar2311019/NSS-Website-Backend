@@ -4,7 +4,6 @@ from flask_jwt_extended import JWTManager
 from dotenv import load_dotenv
 from config import JWT_SECRET_KEY
 
-
 from routes.auth import auth_bp
 from admin_register_user import admin_bp
 import os
