@@ -1,9 +1,9 @@
 import cloudinary
 import cloudinary.uploader
-
+import os
 
 cloudinary.config(
-    cloud_name="NSS-portal",
-    api_key="232236518497422",
-    api_secret="zpE2sX55gYpZlLtkf5jxY6Z3yFU"
+    cloud_name=os.getenv("CLOUDINARY_CLOUD_NAME"),  # string
+    api_key=os.getenv("CLOUDINARY_API_KEY"),
+    api_secret=os.getenv("CLOUDINARY_API_SECRET")
 )
