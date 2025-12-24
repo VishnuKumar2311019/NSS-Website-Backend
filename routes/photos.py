@@ -1,4 +1,5 @@
-from flask import Blueprint, request, jsonify
+import requests
+from flask import Blueprint, request, jsonify, Response
 from flask_jwt_extended import jwt_required, get_jwt
 from werkzeug.utils import secure_filename
 import os
@@ -363,3 +364,27 @@ def delete_activity():
         
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+    
+@photos_bp.route("/download-report", methods=["GET"])
+@jwt_required()
+def download_report():
+    url = request.args.get("url")
+    filename = request.args.get("filename")
+
+    if not url or not filename:
+        return {"error": "Invalid request"}, 400
+
+    r = requests.get(url, stream=True)
+    if r.status_code != 200:
+        return {"error": "Unable to fetch file"}, 500
+
+    return Response(
+        r.content,
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}"',
+            "Content-Type": r.headers.get(
+                "Content-Type",
+                "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+            )
+        }
+    )
