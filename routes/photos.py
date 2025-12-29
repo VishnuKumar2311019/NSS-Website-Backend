@@ -223,7 +223,9 @@ def upload_reports():
                 result = cloudinary.uploader.upload(
                     file,
                     folder="nss/activities/reports",
-                    resource_type="auto"
+                    resource_type="raw",
+                    use_filename=True,
+                    unique_filename=True
                 )
                 # unique_filename = f"report_{uuid.uuid4()}_{filename}"
                 # file_path = os.path.join(UPLOAD_FOLDER, unique_filename)
