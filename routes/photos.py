@@ -373,25 +373,18 @@ def download_report():
     filename = request.args.get("filename")
 
     if not url or not filename:
-        return jsonify({"error": "Invalid request. 'url' and 'filename' are required." }), 400
+        return jsonify({"error": "Invalid request"}), 400
 
     try:
-        # Stream=True is important for large files so we don't load 50MB into RAM at once
         r = requests.get(url, stream=True)
-        
         if r.status_code != 200:
-            return jsonify({"error": "Unable to fetch file from cloud storage"}), 500
-
-        # Create a generator to stream data to the client
-        def generate():
-            for chunk in r.iter_content(chunk_size=4096):
-                yield chunk
+            return jsonify({"error": "Unable to fetch file"}), 500
 
         return Response(
-            generate(),
+            r.iter_content(chunk_size=4096),
             headers={
                 "Content-Disposition": f'attachment; filename="{filename}"',
-                "Content-Type": r.headers.get("Content-Type", "application/octet-stream")
+                "Content-Type": r.headers.get("Content-Type", "application/pdf")
             }
         )
     except Exception as e:
