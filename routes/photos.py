@@ -73,7 +73,7 @@ def validate_mime_type(file, file_type='image'):
 @photos_bp.route('/admin/upload-photos', methods=['POST'])
 @jwt_required()
 def upload_photos():
-    """Upload multiple photos to the gallery"""
+    """Upload multiple photos to Cloudinary"""
     try:
         if 'photos' not in request.files:
             return jsonify({'error': 'No photos provided'}), 400
@@ -82,45 +82,33 @@ def upload_photos():
         uploaded_files = []
         
         for file in files:
+            # Basic validation
             if file and file.filename and allowed_image_file(file.filename):
-                # Validate MIME type
                 if not validate_mime_type(file, 'image'):
                     continue
                 
-                # Validate file size
-                is_valid_size, size_error = validate_file_size(file, 'image')
-                if not is_valid_size:
-                    return jsonify({'error': size_error}), 400
-                
-                # Generate unique filename with path traversal protection
-                filename = secure_filename(file.filename)
-                if not filename:  # Additional security check
-                    continue
+                # Upload to Cloudinary (Permanent Storage)
+                try:
+                    upload_result = cloudinary.uploader.upload(
+                        file,
+                        folder="nss/activities/photos", # distinct folder for organization
+                        resource_type="image"
+                    )
                     
-                unique_filename = f"{uuid.uuid4()}_{filename}"
-                file_path = os.path.join(UPLOAD_FOLDER, unique_filename)
-                
-                # Ensure the file is saved within the upload directory
-                if not os.path.abspath(file_path).startswith(os.path.abspath(UPLOAD_FOLDER)):
-                    return jsonify({'error': 'Invalid file path'}), 400
-                
-                # Save file
-                file.save(file_path)
-                
-                # Store photo info in database
-                photo_data = {
-                    'filename': unique_filename,
-                    'original_name': filename,
-                    'url': f'/uploads/{unique_filename}',
-                    'uploaded_at': datetime.now().isoformat(),
-                    'size': os.path.getsize(file_path),
-                    'mime_type': file.content_type
-                }
-                
-                # In a real app, you would save to database
-                # For now, we'll use a simple file-based approach
-                uploaded_files.append(photo_data)
-        
+                    # Store the Cloudinary URL (starts with http/https)
+                    photo_data = {
+                        'filename': upload_result['public_id'], # Use public_id for reference
+                        'original_name': file.filename,
+                        'url': upload_result['secure_url'],     # ✅ This is the permanent link
+                        'uploaded_at': datetime.now().isoformat(),
+                        'mime_type': file.content_type
+                    }
+                    uploaded_files.append(photo_data)
+                    
+                except Exception as upload_error:
+                    print(f"Cloudinary upload failed: {str(upload_error)}")
+                    continue
+
         if not uploaded_files:
             return jsonify({'error': 'No valid photos uploaded'}), 400
         
@@ -131,7 +119,7 @@ def upload_photos():
         
     except Exception as e:
         return jsonify({'error': str(e)}), 500
-
+        
 @photos_bp.route('/admin/get-photos', methods=['GET'])
 @jwt_required()
 def get_photos():
