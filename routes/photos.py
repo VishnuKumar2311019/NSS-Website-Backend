@@ -366,7 +366,6 @@ def delete_activity():
         return jsonify({'error': str(e)}), 500
     
 @photos_bp.route("/download-report", methods=["GET"])
-@jwt_required()
 def download_report():
     url = request.args.get("url")
     filename = request.args.get("filename")
