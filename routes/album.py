@@ -221,6 +221,7 @@ def upload_photos(album_name):
         return jsonify({"error": "No valid photos uploaded (Check logs for details)"}), 400
 
     return jsonify({"message": "Photos added", "photos": uploaded_files_log})
+    
 # ==============================
 # DELETE PHOTO FROM ALBUM
 # ==============================
