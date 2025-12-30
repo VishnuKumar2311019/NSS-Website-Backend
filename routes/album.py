@@ -164,50 +164,61 @@ def upload_photos(album_name):
 
 @albums_bp.route('/api/albums/<album_name>/photos', methods=['POST'])
 def upload_photos(album_name):
-    # 1. Check if album exists
+    # 1. Verify Album Exists
     album = albums_collection.find_one({"name": album_name})
     if not album:
         return jsonify({"error": f"Album '{album_name}' not found"}), 404
 
     uploaded_files_log = []
+    
+    # 2. DEBUG: Print all keys received from Frontend
+    print(f"DEBUG: Received file keys: {list(request.files.keys())}")
 
-    if 'photos' in request.files:
-        uploaded_photos = request.files.getlist('photos')
+    # 3. Smart Key Detection (Handle 'photos', 'file', 'image', etc.)
+    # We collect files from ALL recognized keys
+    all_files = []
+    for key in ['photos', 'file', 'image', 'images']:
+        if key in request.files:
+            files = request.files.getlist(key)
+            all_files.extend(files)
+            print(f"Found {len(files)} files under key '{key}'")
 
-        for file in uploaded_photos:
-            if not file or not file.filename:
-                continue
+    if not all_files:
+        return jsonify({"error": f"No photos found. Keys received: {list(request.files.keys())}"}), 400
 
-            try:
-                # 2. Upload to Cloudinary
-                upload_result = cloudinary.uploader.upload(
-                    file,
-                    folder="nss/gallery",
-                    resource_type="image"
-                )
-                
-                new_photo = {
-                    "filename": upload_result.get("public_id"),
-                    "url": upload_result.get("secure_url"),
-                    "original_name": file.filename
-                }
+    # 4. Process all found files
+    for file in all_files:
+        if not file or not file.filename:
+            continue
 
-                # 3. Update MongoDB
-                # If this line fails, we want to know WHY.
-                albums_collection.update_one(
-                    {"name": album_name},
-                    {"$push": {"photos": new_photo}}
-                )
-                
-                uploaded_files_log.append(new_photo)
+        try:
+            # Upload to Cloudinary
+            upload_result = cloudinary.uploader.upload(
+                file,
+                folder="nss/gallery",
+                resource_type="image"
+            )
+            
+            new_photo = {
+                "filename": upload_result.get("public_id"),
+                "url": upload_result.get("secure_url"),
+                "original_name": file.filename
+            }
 
-            except Exception as e:
-                # STOP and send the error immediately to the frontend
-                print(f"CRITICAL ERROR: {str(e)}")
-                return jsonify({"error": f"Server Crash: {str(e)}"}), 500
+            # Update MongoDB IMMEDIATELY
+            albums_collection.update_one(
+                {"name": album_name},
+                {"$push": {"photos": new_photo}}
+            )
+            
+            uploaded_files_log.append(new_photo)
+
+        except Exception as e:
+            print(f"CRITICAL ERROR processing {file.filename}: {str(e)}")
+            return jsonify({"error": f"Server Crash: {str(e)}"}), 500
 
     if not uploaded_files_log:
-        return jsonify({"error": "No valid photos uploaded (List is empty)"}), 400
+        return jsonify({"error": "No valid photos uploaded (Check logs for details)"}), 400
 
     return jsonify({"message": "Photos added", "photos": uploaded_files_log})
 # ==============================
