@@ -169,6 +169,22 @@ def upload_photos(album_name):
     if not album:
         return jsonify({"error": f"Album '{album_name}' not found"}), 404
 
+    if request.is_json and request.json.get("photos"):
+        photos = request.json.get("photos")
+
+        if not isinstance(photos, list):
+            return jsonify({"error": "Invalid photos payload"}), 400
+
+        albums_collection.update_one(
+            {"name": album_name},
+            {"$push": {"photos": {"$each": photos}}}
+        )
+
+        return jsonify({
+            "message": "Photos added via JSON",
+            "photos": photos
+        }), 200
+
     uploaded_files_log = []
     
     # 2. DEBUG: Print all keys received from Frontend
