@@ -3,6 +3,9 @@ from werkzeug.utils import secure_filename
 from models.mongo import albums_collection
 from config import UPLOAD_FOLDER
 import os
+from utils.cloudinary import cloudinary
+import cloudinary
+import cloudinary.uploader
 import uuid
 
 albums_bp = Blueprint('albums', __name__)
@@ -68,6 +71,7 @@ def delete_album(album_name):
 # ==============================
 # UPLOAD / ASSOCIATE PHOTOS
 # ==============================
+'''
 @albums_bp.route('/api/albums/<album_name>/photos', methods=['POST'])
 def upload_photos(album_name):
     album = albums_collection.find_one({"name": album_name})
@@ -153,6 +157,41 @@ def upload_photos(album_name):
         "message": "Photos added to album successfully",
         "photos": photo_list
     })
+'''
+@albums_bp.route('/api/albums/<album_name>/photos', methods=['POST'])
+def upload_photos(album_name):
+    album = albums_collection.find_one({"name": album_name})
+    if not album:
+        return jsonify({"error": "Album not found"}), 404
+
+    photo_list = []
+
+    # Multipart upload mode
+    if 'photos' in request.files:
+        uploaded_photos = request.files.getlist('photos')
+
+        for file in uploaded_photos:
+            if not file or not file.filename:
+                continue
+
+            # 1. Upload directly to Cloudinary
+            # No need for secure_filename or unique_filename logic here
+            upload_result = cloudinary.uploader.upload(file)
+            
+            # 2. Extract the Cloudinary URL and Public ID
+            photo_list.append({
+                "filename": upload_result.get("public_id"), # Store for deletion later
+                "url": upload_result.get("secure_url")      # This is the full https:// link
+            })
+
+    # ... keep rest of the logic ...
+    
+    albums_collection.update_one(
+        {"name": album_name},
+        {"$push": {"photos": {"$each": photo_list}}}
+    )
+
+    return jsonify({"message": "Photos added", "photos": photo_list})
 
 # ==============================
 # DELETE PHOTO FROM ALBUM
