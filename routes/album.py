@@ -160,13 +160,16 @@ def upload_photos(album_name):
 '''
 # In album.py
 
+# In album.py
+
 @albums_bp.route('/api/albums/<album_name>/photos', methods=['POST'])
 def upload_photos(album_name):
+    # 1. Check if album exists
     album = albums_collection.find_one({"name": album_name})
     if not album:
-        return jsonify({"error": "Album not found"}), 404
+        return jsonify({"error": f"Album '{album_name}' not found"}), 404
 
-    photo_list = []
+    uploaded_files_log = []
 
     if 'photos' in request.files:
         uploaded_photos = request.files.getlist('photos')
@@ -176,32 +179,37 @@ def upload_photos(album_name):
                 continue
 
             try:
-                # 1. Upload DIRECTLY to Cloudinary
+                # 2. Upload to Cloudinary
                 upload_result = cloudinary.uploader.upload(
                     file,
-                    folder="nss/gallery", 
+                    folder="nss/gallery",
                     resource_type="image"
                 )
                 
-                # 2. Save the Cloudinary URL (starts with https://)
-                photo_list.append({
-                    "filename": upload_result.get("public_id"), # We need this ID to delete it later
-                    "url": upload_result.get("secure_url"),     # ✅ PERMANENT LINK
+                new_photo = {
+                    "filename": upload_result.get("public_id"),
+                    "url": upload_result.get("secure_url"),
                     "original_name": file.filename
-                })
+                }
+
+                # 3. Update MongoDB
+                # If this line fails, we want to know WHY.
+                albums_collection.update_one(
+                    {"name": album_name},
+                    {"$push": {"photos": new_photo}}
+                )
+                
+                uploaded_files_log.append(new_photo)
+
             except Exception as e:
-                print(f"Error uploading {file.filename}: {e}")
-                continue
+                # STOP and send the error immediately to the frontend
+                print(f"CRITICAL ERROR: {str(e)}")
+                return jsonify({"error": f"Server Crash: {str(e)}"}), 500
 
-    if not photo_list:
-        return jsonify({"error": "No valid photos uploaded"}), 400
+    if not uploaded_files_log:
+        return jsonify({"error": "No valid photos uploaded (List is empty)"}), 400
 
-    albums_collection.update_one(
-        {"name": album_name},
-        {"$push": {"photos": {"$each": photo_list}}}
-    )
-
-    return jsonify({"message": "Photos added", "photos": photo_list})
+    return jsonify({"message": "Photos added", "photos": uploaded_files_log})
 # ==============================
 # DELETE PHOTO FROM ALBUM
 # ==============================
