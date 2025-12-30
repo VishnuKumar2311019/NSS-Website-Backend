@@ -158,6 +158,8 @@ def upload_photos(album_name):
         "photos": photo_list
     })
 '''
+# In album.py
+
 @albums_bp.route('/api/albums/<album_name>/photos', methods=['POST'])
 def upload_photos(album_name):
     album = albums_collection.find_one({"name": album_name})
@@ -166,7 +168,6 @@ def upload_photos(album_name):
 
     photo_list = []
 
-    # Multipart upload mode
     if 'photos' in request.files:
         uploaded_photos = request.files.getlist('photos')
 
@@ -174,25 +175,33 @@ def upload_photos(album_name):
             if not file or not file.filename:
                 continue
 
-            # 1. Upload directly to Cloudinary
-            # No need for secure_filename or unique_filename logic here
-            upload_result = cloudinary.uploader.upload(file)
-            
-            # 2. Extract the Cloudinary URL and Public ID
-            photo_list.append({
-                "filename": upload_result.get("public_id"), # Store for deletion later
-                "url": upload_result.get("secure_url")      # This is the full https:// link
-            })
+            try:
+                # 1. Upload DIRECTLY to Cloudinary
+                upload_result = cloudinary.uploader.upload(
+                    file,
+                    folder="nss/gallery", 
+                    resource_type="image"
+                )
+                
+                # 2. Save the Cloudinary URL (starts with https://)
+                photo_list.append({
+                    "filename": upload_result.get("public_id"), # We need this ID to delete it later
+                    "url": upload_result.get("secure_url"),     # ✅ PERMANENT LINK
+                    "original_name": file.filename
+                })
+            except Exception as e:
+                print(f"Error uploading {file.filename}: {e}")
+                continue
 
-    # ... keep rest of the logic ...
-    
+    if not photo_list:
+        return jsonify({"error": "No valid photos uploaded"}), 400
+
     albums_collection.update_one(
         {"name": album_name},
         {"$push": {"photos": {"$each": photo_list}}}
     )
 
     return jsonify({"message": "Photos added", "photos": photo_list})
-
 # ==============================
 # DELETE PHOTO FROM ALBUM
 # ==============================
