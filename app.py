@@ -1,3 +1,4 @@
+import utils.session
 from flask import Flask
 from flask_cors import CORS
 from flask_jwt_extended import JWTManager
@@ -21,7 +22,7 @@ app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
 # Configure CORS with specific origins for security
 CORS(app, origins=[
-    "https://nss-website-frontend.vercel.app",  # Production frontend
+    "https://nss-ssn.vercel.app",  # Production frontend
     "http://localhost:3000",  # React development server
     "http://127.0.0.1:3000",  # Alternative localhost
     "http://localhost:3001",  # Alternative React port
